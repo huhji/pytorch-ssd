@@ -11,6 +11,7 @@ center_variance = 0.1
 size_variance = 0.2
 
 specs = [
+    #SSDSpec('feature_map_size', 'shrinkage', 'box_sizes', 'aspect_ratios')
     SSDSpec(19, 16, SSDBoxSizes(60, 105), [2, 3]),
     SSDSpec(10, 32, SSDBoxSizes(105, 150), [2, 3]),
     SSDSpec(5, 64, SSDBoxSizes(150, 195), [2, 3]),

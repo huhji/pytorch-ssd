@@ -3,6 +3,7 @@ import os
 import logging
 import sys
 import itertools
+import pickle
 
 import torch
 from torch.utils.data import DataLoader, ConcatDataset
@@ -30,13 +31,13 @@ parser = argparse.ArgumentParser(
 parser.add_argument("--dataset_type", default="voc", type=str,
                     help='Specify dataset type. Currently support voc and open_images.')
 
-parser.add_argument('--datasets', nargs='+', help='Dataset directory path')
+parser.add_argument('--datasets', default="/data/yper_data/yolo/images/train", help='Dataset directory path')
 parser.add_argument('--validation_dataset', help='Dataset directory path')
 parser.add_argument('--balance_data', action='store_true',
                     help="Balance training data by down-sampling more frequent labels.")
 
 
-parser.add_argument('--net', default="vgg16-ssd",
+parser.add_argument('--net', default="mb2-ssd-lite",
                     help="The network architecture, it can be mb1-ssd, mb1-lite-ssd, mb2-ssd-lite, mb3-large-ssd-lite, mb3-small-ssd-lite or vgg16-ssd.")
 parser.add_argument('--freeze_base_net', action='store_true',
                     help="Freeze base net layers.")
@@ -101,7 +102,7 @@ parser.add_argument('--checkpoint_folder', default='models/',
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 args = parser.parse_args()
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() and args.use_cuda else "cpu")
+DEVICE = torch.device("cuda:0,1" if torch.cuda.is_available() and args.use_cuda else "cpu")
 
 if args.use_cuda and torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True
@@ -169,6 +170,7 @@ def test(loader, net, criterion, device):
 
 
 if __name__ == '__main__':
+    loss_list = []
     timer = Timer()
 
     logging.info(args)
@@ -228,12 +230,12 @@ if __name__ == '__main__':
     train_dataset = ConcatDataset(datasets)
     logging.info("Train dataset size: {}".format(len(train_dataset)))
     train_loader = DataLoader(train_dataset, args.batch_size,
-                              num_workers=args.num_workers,
+                              num_workers=0,
                               shuffle=True)
     logging.info("Prepare Validation datasets.")
     if args.dataset_type == "voc":
-        val_dataset = VOCDataset(args.validation_dataset, transform=test_transform,
-                                 target_transform=target_transform, is_test=True)
+        val_dataset = VOCDataset(dataset_path, transform=test_transform,
+                                 target_transform=target_transform, is_valid=True)
     elif args.dataset_type == 'open_images':
         val_dataset = OpenImagesDataset(dataset_path,
                                         transform=test_transform, target_transform=target_transform,
@@ -333,6 +335,9 @@ if __name__ == '__main__':
                 f"Validation Regression Loss {val_regression_loss:.4f}, " +
                 f"Validation Classification Loss: {val_classification_loss:.4f}"
             )
+            loss_list.append([epoch, val_loss, val_regression_loss, val_classification_loss])
             model_path = os.path.join(args.checkpoint_folder, f"{args.net}-Epoch-{epoch}-Loss-{val_loss}.pth")
             net.save(model_path)
             logging.info(f"Saved model {model_path}")
+    with open('mobilenet-ssd-lite.txt', 'wb') as f :
+        pickle.dump(loss_list, f)

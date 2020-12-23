@@ -302,7 +302,9 @@ class RandomSampleCrop(object):
                 current_boxes = boxes[mask, :].copy()
 
                 # take only matching gt labels
+                # print(mask)
                 current_labels = labels[mask]
+                # print("current_labels : ", current_labels)
 
                 # should we use the box left and top corner or the crop's
                 current_boxes[:, :2] = np.maximum(current_boxes[:, :2],
